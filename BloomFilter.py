@@ -1,51 +1,67 @@
-# NAME: Isabella S. Garrido Blanco
-# STUDENT ID: 802199609
-# COURSE: CIIC 4025-100
-# PROFESSOR: Wilfredo E. Lugo
-# Project 2: Bloom Filter
-
 import csv
 import sys
+import mmh3
+import math
+from bitarray import bitarray
 
 inputFile1 = sys.argv[1]
-#inputFile2 = sys.argv[2]
-outputFile = 'results.csv'
+inputFile2 = sys.argv[2]
+outputFile = 'Results.csv'
+falsePositiveProbability = 0.0000001
 
 # Array to be filled with all emails in first input file.
 emailsList = []
 
-# Input Info
-# The program must take 2 csv files as command-line inputs.
-# The first CSV will be used to create the Bloom Filter,
-# the second will be used to validate against the Bloom Filter.
-# The input comma-separated files will contain 1 column: Email.
-# Based on the email key, your program will
-# build the Bloom Filter based on file 1 inputs.
-# Then it will need to check file 2 entries
-# against the bloom filter and provide its assessment
+#Array to be filled with results after checking the Bloom Filter.
+resultsList = []
 
-# Output info
-# Code must output a "Results.csv" file that will contain all e-mails on the
-# second CSV with a new field "Result" that will contain the result of the
-# Bloom Filter for that e-mail.  The Result must be one of
-# 2 possible values: "Probably in the DB" or "Not in the DB"
+#Array to be filled with emails to be looked for in the Bloom Filter.
+emailsCheckList = []
 
-# Requirements and Specifications
-# Create Bloom Filter based on parameters.  Bloom Filter
-#  must be an object since in the future the code must be
-# able to generate multiple bloom filters with different parameters.
+class BloomFilter:
 
+    # Bloom Filter constructor
+    def __init__(self, filterSize, hashCount):
+        self.filterSize = filterSize
+        self.hashCount = hashCount
+        self.bitArray = bitarray(filterSize)
+        # Start with an array full of 0s
+        self.bitArray.setall(0)
 
-# Inputs: 2 csv files
-# Both files contain emails
-#File 1 is used to create the bloom filter
+    def addDataToFilter(self, data):
+        for seeds in range(self.hashCount):
+            # Make sure the index is within the size of the filter.
+            index = mmh3.hash(data, seeds) % self.filterSize
+            # Sets position to 1
+            self.bitArray[index] = 1
 
+    # Check if the string is most likely present in the filter.
+    def present(self, data):
+        for seeds in range(self.hashCount):
+            index = mmh3.hash (data, seeds) % self.filterSize
+            # If the bit is off, element is not in the DB
+            if self.bitArray[index] == 0:
+                return "Not in the DB"
+        return "Probably in the DB"
+
+# --------- Reading first input file ---------
 def read_input(input):
     with open(input, 'r') as i:
         lines = i.readlines()
         for line in lines[1:]: # Skip title
             emails = line.strip()  # Remove trailing newline characters
-            emailsList.append(emails)
+            emailsList.append(emails) # Adds all emails to a list.
+
+# --------- Checking the Bloom Filter ---------
+def checkBloomFilter(input2, bf):
+        with open(input2, 'r') as i:
+            lines = i.readlines()
+            for line in lines[1:]: # Skip title
+                emails = line.strip()
+                # Adds all emails from second csv file to a list.
+                emailsCheckList.append(emails)
+                # Adds results for each email from second csv file to a list.
+                resultsList.append(bf.present(emails))
 
 
 # --------- Generating the output file ---------
@@ -54,10 +70,23 @@ def write_output(output):
         header = ['email', 'result']
         csvwriter = csv.writer(file)
         csvwriter.writerow(header)
+        length = len(emailsCheckList)
+        i = 0
+        while length > 0:
+            data = [emailsCheckList[i], resultsList[i]]
+            csvwriter.writerow(data)
+            length -= 1
+            i += 1
 def main():
     read_input(inputFile1)
-    # write_output(outputFile)
-
+    numberOfInputs = len(emailsList)
+    bitArraySize = math.floor(- (numberOfInputs * math.log(falsePositiveProbability)) / (math.log(2) ** 2))
+    numberOfHashes = math.floor((bitArraySize / numberOfInputs) * math.log(2))
+    bf = BloomFilter(bitArraySize, numberOfHashes)
+    for emailData in emailsList:
+        bf.addDataToFilter(emailData)
+    checkBloomFilter(inputFile2, bf)
+    write_output(outputFile)
 
 if __name__ == '__main__':
     main()
