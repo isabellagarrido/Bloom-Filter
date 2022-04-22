@@ -6,7 +6,7 @@ from bitarray import bitarray
 
 inputFile1 = sys.argv[1]
 inputFile2 = sys.argv[2]
-outputFile = 'Results.csv'
+outputFile = 'results.csv'
 falsePositiveProbability = 0.0000001
 
 # Array to be filled with all emails in first input file.
@@ -45,12 +45,28 @@ class BloomFilter:
         return "Probably in the DB"
 
 # --------- Reading first input file ---------
+# Reads input file and creates the bloom filter.
+# Returns the bloom filter.
 def read_input(input):
     with open(input, 'r') as i:
         lines = i.readlines()
         for line in lines[1:]: # Skip title
             emails = line.strip()  # Remove trailing newline characters
             emailsList.append(emails) # Adds all emails to a list.
+
+    numberOfInputs = len(emailsList)
+
+    # Formula to calulate the size of the bit array.
+    bitArraySize = math.floor(- (numberOfInputs * math.log(falsePositiveProbability)) / (math.log(2) ** 2))
+
+    #Formula to calculate the amount of hashes to use.
+    numberOfHashes = math.floor((bitArraySize / numberOfInputs) * math.log(2))
+
+    bf = BloomFilter(bitArraySize, numberOfHashes)
+    for emailData in emailsList:
+        bf.addDataToFilter(emailData)
+
+    return bf
 
 # --------- Checking the Bloom Filter ---------
 def checkBloomFilter(input2, bf):
@@ -78,13 +94,7 @@ def write_output(output):
             length -= 1
             i += 1
 def main():
-    read_input(inputFile1)
-    numberOfInputs = len(emailsList)
-    bitArraySize = math.floor(- (numberOfInputs * math.log(falsePositiveProbability)) / (math.log(2) ** 2))
-    numberOfHashes = math.floor((bitArraySize / numberOfInputs) * math.log(2))
-    bf = BloomFilter(bitArraySize, numberOfHashes)
-    for emailData in emailsList:
-        bf.addDataToFilter(emailData)
+    bf = read_input(inputFile1)
     checkBloomFilter(inputFile2, bf)
     write_output(outputFile)
 
